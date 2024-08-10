@@ -7,6 +7,7 @@
 
 import React, {useEffect, useState} from 'react';
 import {
+  FlatList,
   Image,
   SafeAreaView,
   ScrollView,
@@ -25,7 +26,7 @@ import {
   ReloadInstructions,
 } from 'react-native/Libraries/NewAppScreen';
 import {getCityId, getWeatherData} from './src/API/Services/WeatherServices';
-import {Searchbar} from 'react-native-paper';
+import {Searchbar, Card} from 'react-native-paper';
 
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
@@ -38,13 +39,33 @@ function App() {
 
   const [searchQuery, setSearchQuery] = React.useState('');
 
-  // useEffect(()=>{
-  //   getCityId('Visakhapatnam').then((res)=>{
-  //     console.log("City Id",res)
-  //   }).catch((err)=>{
-  //     console.log(err)
-  //   });
-  // },[]);
+  const [filteredData, setFilteredData] = useState([]);
+
+  //Convert the date
+  const convertTheDatefromMilliseconds = seconds => {
+    const milliseconds = seconds * 1000;
+    const newdate = new Date(milliseconds);
+
+    const date = newdate.getDate();
+    const month = newdate.getMonth() + 1;
+
+    return `${date}/${month}`;
+  };
+
+  //Filter the data to show only one item per date
+  const filterData = data => {
+    const uniqueDates = {};
+
+    data?.list?.forEach(item => {
+      const date = new Date(item.dt * 1000).getDate();
+
+      if (!uniqueDates[date]) {
+        uniqueDates[date] = item;
+      }
+    });
+
+    return Object.values(uniqueDates);
+  };
 
   useEffect(() => {
     let payload = {
@@ -55,8 +76,7 @@ function App() {
       .then(res => {
         setWeatherData(res);
       })
-      .catch(err => {
-      });
+      .catch(err => {});
   }, [searchQuery]);
 
   useEffect(() => {
@@ -66,10 +86,12 @@ function App() {
 
     getWeatherData(payload)
       .then(res => {
+        console.log('Response', res);
+        const filteredData = filterData(res);
+        setFilteredData(filteredData);
         setWeatherData(res);
       })
-      .catch(err => {
-      });
+      .catch(err => {});
   }, []);
 
   return (
@@ -80,7 +102,12 @@ function App() {
       />
       <View>
         <Image
-          source={require('./src/Assets/Sunny_bg.jpg')}
+          source={
+            Object.keys(weatherData).length > 0 &&
+            weatherData?.list[0]?.weather[0]?.main == 'Rain'
+              ? require('./src/Assets/Rainy_bg.jpg')
+              : require('./src/Assets/Sunny_bg.jpg')
+          }
           style={{
             objectFit: 'fill',
             height: '100%',
@@ -100,24 +127,64 @@ function App() {
         <Text style={styles.headingTextStyles}>Today's Weather </Text>
         <Text style={{fontSize: 60, fontWeight: 'bold', color: '#fff'}}>
           {Object.keys(weatherData).length > 0 &&
-            Math.round(weatherData?.main?.temp)}
+            Math.round(weatherData?.list[0]?.main?.temp)}
+          &deg;
         </Text>
         <Text style={styles.subHeadingStyles}>
-          {Object.keys(weatherData).length > 0 && weatherData?.name}
+          {Object.keys(weatherData).length > 0 && weatherData?.city?.name}
         </Text>
         <Text style={styles.subHeadingStyles}>
-          {Object.keys(weatherData).length > 0 && weatherData?.weather[0]?.main}
+          {Object.keys(weatherData).length > 0 &&
+            weatherData?.list[0]?.weather[0]?.main}
         </Text>
       </View>
-      {/* <View style={{position:'absolute',bottom:0}}>
-          <Text style={{fontSize:20, color:'#fff',marginBottom:'5%'}}>Next 4 days forecast</Text>
-          <View style={{flexDirection:'row',justifyContent:'space-between'}}>
-          <View>
-            <Image source={require('./src/Assets/Sunny.png')} style={{height:80, width:80,objectFit:'fill'}}/>
-            <Text style={{fontSize:20}}>30</Text>
-          </View>
-          </View>
-        </View> */}
+
+      <View style={{position: 'absolute', bottom: 0}}>
+        <Text
+          style={{
+            fontSize: 20,
+            color: '#fff',
+            marginBottom: '5%',
+            marginLeft: '3%',
+          }}>
+          Next 4 days forecast
+        </Text>
+
+        <FlatList
+          horizontal={true}
+          data={Object.keys(weatherData).length > 0 ? filteredData : []}
+          renderItem={({item, index}) => {
+            return (
+              <View style={{marginHorizontal: '1%'}}>
+                <Card>
+                  <Image
+                    source={require('./src/Assets/Sunny.png')}
+                    style={{height: 80, width: 80, objectFit: 'fill'}}
+                  />
+                  <Text
+                    style={{
+                      fontSize: 20,
+                      color: '#000',
+                      marginTop: '2%',
+                      alignSelf: 'center',
+                    }}>
+                    {Math.round(item?.main?.temp)}&deg;
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 20,
+                      color: '#000',
+                      marginTop: '1%',
+                      alignSelf: 'center',
+                    }}>
+                    {convertTheDatefromMilliseconds(item?.dt)}
+                  </Text>
+                </Card>
+              </View>
+            );
+          }}
+        />
+      </View>
     </SafeAreaView>
   );
 }

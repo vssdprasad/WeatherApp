@@ -7,5 +7,5 @@ export const getCityId = (userData) => {
 
 
 export const getWeatherData = (userData) => {
-    return httpService.get(`data/2.5/weather?q=`+ userData?.cityname +`&appid=1635890035cbba097fd5c26c8ea672a1&units=metric`)
+    return httpService.get(`data/2.5/forecast?q=`+ userData?.cityname +`&appid=1635890035cbba097fd5c26c8ea672a1&units=metric`)
 }
